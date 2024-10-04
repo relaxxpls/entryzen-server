@@ -4,6 +4,10 @@ import io
 from typing import Tuple, Dict, List
 import pymupdf
 from langchain_openai import ChatOpenAI
+import dotenv
+
+
+dotenv.load_dotenv()
 
 
 def create_prompt(invoice_page: str):
@@ -15,7 +19,7 @@ for the invoice get the:
 Customer name, Supplier name, document number, document date
 
 for each good in the invoice, get the:
-code, Product Name / Recognized Product, Unit, Quantity, Price, Taxable Amount, Tax Rate, Tax, Total Amount
+HSN code, Product Name / Recognized Product, Unit, Quantity, Price, Taxable Amount, Tax Rate, Tax, Total Amount
 
 Keep the output format strictly as follows:
 line 1 for invoice titles in csv format
@@ -26,6 +30,7 @@ Output no other information.
 
 Pages are seperated by 3 new lines.
 If the invoice contains a duplicate page, ignore it.
+If there are numbers which have a comma, remove the comma.
 
 The invoice text is as follows:
 {invoice_page}
@@ -53,7 +58,7 @@ def process_csv_string(csv_string: str):
 
 def process_invoice(pages: List[str]) -> Tuple[pd.DataFrame, pd.DataFrame]:
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
-    prompt = create_prompt(pages.join("\n\n\n"))
+    prompt = create_prompt("\n\n\n".join(pages))
     msg = llm.invoke(prompt)
 
     return process_csv_string(msg.content)
@@ -74,7 +79,7 @@ def process_pdf(pdf_file: str):
 
 iface = gr.Interface(
     fn=process_pdf,
-    inputs=gr.File(label="Upload PDF Invoice"),
+    inputs=gr.File(label="Upload Invoice PDF"),
     outputs=[
         gr.Dataframe(label="Invoice Details"),
         gr.Dataframe(label="Invoice Items"),
@@ -84,4 +89,4 @@ iface = gr.Interface(
 )
 
 # Launch the app
-iface.launch()
+iface.launch(share=True)
