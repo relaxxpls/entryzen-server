@@ -1,7 +1,6 @@
 import gradio as gr
 import pandas as pd
-import io
-from typing import Tuple, Dict, List
+from typing import Tuple, List
 import pymupdf
 from langchain_openai import ChatOpenAI
 import dotenv
