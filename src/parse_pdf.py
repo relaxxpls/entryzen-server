@@ -63,4 +63,7 @@ def parse_pdf(pdf_file: str):
     prompt = create_prompt(text)
     msg = llm.invoke(prompt)
 
-    return process_csv_string(msg.content)
+    common_df, items_df = process_csv_string(msg.content)
+    common_df["filename"] = pdf_file
+
+    return common_df, items_df
