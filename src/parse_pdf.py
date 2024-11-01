@@ -8,14 +8,14 @@ import io
 dotenv.load_dotenv()
 
 
-def create_prompt(invoice_page: str):
+def create_prompt(company_name: str, invoice_page: str):
     return f"""
-You are an expert accounting system assistant specializing in Tally data entry automation.
+You are an expert accounting system assistant specializing in Tally data entry automation for "{company_name}" company.
 Your task is to analyze invoice text and prepare it for Tally import.
 Extract the following information maintaining exact output format:
 
 for the invoice get the:
-Customer Name,Customer Address,Customer GSTIN,Supplier Name,Supplier Address,Supplier GSTIN,Document Number,Document Date
+Voucher Type, Customer Name,Customer Address,Customer GSTIN,Supplier Name,Supplier Address,Supplier GSTIN,Document Number,Document Date
 
 for each good in the invoice, get the:
 HSN code, Product Name, Quantity, Quantity Unit, Rate, Discount, Taxable Amount, Tax Rate, Tax Amount, Total Amount
@@ -55,12 +55,12 @@ def process_csv_string(csv_string: str):
     return common_df, item_df
 
 
-def parse_pdf(pdf_file: str):
+def parse_pdf(company_name: str, pdf_file: str):
     pages = pymupdf.get_text(pdf_file)
     text = "\n\n\n".join(pages)
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
-    prompt = create_prompt(text)
+    prompt = create_prompt(company_name, text)
     msg = llm.invoke(prompt)
 
     common_df, items_df = process_csv_string(msg.content)
