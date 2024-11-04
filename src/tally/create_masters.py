@@ -12,6 +12,7 @@ from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
     StateWiseDetail,
     GSTTaxabilityType,
     GSTRateDetail,
+    TaxType,
 )
 from TallyConnector.Core.Models.Masters import Ledger  # type: ignore # noqa: E402
 from TallyConnector.Core.Models.Masters.Inventory import StockItem, Unit, HSNDetail  # type: ignore # noqa: E402
@@ -28,6 +29,10 @@ DEFAULT_LEDGER = {
     "Sales": {
         "Name": "TallAi - Sales Account",
         "Group": "Sales Accounts",
+    },
+    "Tax": {
+        "Name": "IGST",
+        "Group": "Duties & Taxes",
     },
 }
 
@@ -172,6 +177,19 @@ def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
         # ? Update ledger names
         ledger_names.append(ledger.Name)
         print(f"Created {voucher_type} Ledger with {ledger.Name}")
+
+    # ? Create IGST ledger
+    if "IGST" not in ledger_names:
+        ledger = Ledger()
+        ledger.Name = DEFAULT_LEDGER["Tax"]["Name"]
+        ledger.Group = DEFAULT_LEDGER["Tax"]["Group"]
+        ledger.TaxType = (TaxType.GST,)
+        ledger.GSTTaxType = "IGST"
+        tally.PostLedgerAsync[Ledger](ledger).Result
+
+        # ? Update ledger names
+        ledger_names.append(ledger.Name)
+        print("Created IGST Ledger")
 
     # ? Create units
     create_units(items_df)
