@@ -14,10 +14,10 @@ Your task is to analyze invoice text and prepare it for Tally import.
 Extract the following information maintaining exact output format:
 
 for the invoice get the:
-Voucher Type, Customer Name,Customer Address,Customer GSTIN,Supplier Name,Supplier Address,Supplier GSTIN,Document Number,Document Date
+Voucher Type,Customer Name,Customer Address,Customer State,Customer GSTIN,Supplier Name,Supplier Address,Supplier State,Supplier GSTIN,Document Number,Document Date
 
-for each good in the invoice, get the:
-HSN code, Product Name, Quantity, Quantity Unit, Rate, Currency, Discount, Taxable Amount, Tax Rate, Tax Amount, Total Amount
+for each good in the invoice,get the:
+HSN code,Product Name,Quantity,Quantity Unit,Rate,Currency,Discount,Taxable Amount,Tax Rate,Tax Amount,Total Amount
 
 Important rules:
 1. Keep the output format strictly as follows:
@@ -56,16 +56,22 @@ def process_csv_string(csv_string: str):
     return common_df, item_df
 
 
-def parse_pdf(company_name: str, pdf_file: io.BytesIO):
-    with pymupdf.open(stream=pdf_file.read()) as doc:
-        pages = [page.get_text() for page in doc]
+def parse_pdf(company_name: str, pdf_file: io.BytesIO | str):
+    is_file_path = isinstance(pdf_file, str)
+    if is_file_path:
+        pages = pymupdf.get_text(pdf_file)
+    else:
+        with pymupdf.open(stream=pdf_file.read()) as doc:
+            pages = [page.get_text() for page in doc]
     text = "\n\n\n".join(pages)
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)
     prompt = create_prompt(company_name, text)
     msg = llm.invoke(prompt)
+    msg.pretty_print()
+    print("ChatGPT Response Metadata:", msg.response_metadata)
 
     common_df, items_df = process_csv_string(msg.content)
-    common_df["filename"] = pdf_file.name
+    common_df["filename"] = pdf_file if is_file_path else pdf_file.name
 
     return common_df, items_df

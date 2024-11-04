@@ -1,17 +1,10 @@
+from .tally import loadclr as _
 import pandas as pd
-from .find_match import find_closest_match
-import sys
-from pythonnet import load
+from .find_match import find_closest_matches, batch_match_column
 
-
-load("coreclr")
-sys.path.append("../TallyConnector")
-
-import clr  # noqa: E402
-
-clr.AddReference("TallyConnector")
-
-from TallyConnector.Services import TallyService  # noqa: E402
+from TallyConnector.Services import TallyService  # type: ignore # noqa: E402
+from TallyConnector.Core.Models.Masters import Ledger  # type: ignore # noqa: E402
+from TallyConnector.Core.Models.Masters.Inventory import StockItem, Unit  # type: ignore # noqa: E402
 
 tally = TallyService()
 
@@ -24,33 +17,27 @@ def get_tally_company() -> str:
     return active_company
 
 
-# TODO: Match units and other fields
 def match_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
     # ? Match supplier name to ledger name
-    supplier_name = common_df["Supplier Name"].iloc[0]
-    ledgers = tally.GetLedgersAsync().Result
+    ledgers = tally.GetLedgersAsync[Ledger]().Result
     ledger_names = [ledger.Name for ledger in ledgers]
-    supplier_ledger_name = find_closest_match(supplier_name, ledger_names)
-    common_df["[D] Party Account"] = supplier_ledger_name
+    supplier_name = common_df["Supplier Name"].iloc[0]
+    customer_name = common_df["Customer Name"].iloc[0]
+    voucher_type = common_df["Voucher Type"].iloc[0]
+    party_account = supplier_name if voucher_type == "Purchase" else customer_name
+    common_df["Party Account"] = party_account
+    common_df["[D] Party Account"] = find_closest_matches(
+        common_df["Party Account"], ledger_names
+    )
 
-    stock_items = tally.GetStockItemsAsync().Result
+    stock_items = tally.GetStockItemsAsync[StockItem]().Result
     stock_item_names = [item.Name for item in stock_items]
-    items_df["[D] Stock Item"] = items_df["Product Name"].apply(
-        lambda x: find_closest_match(x, stock_item_names)
+    items_df["[D] Stock Item"] = batch_match_column(
+        items_df["Product Name"], stock_item_names
     )
 
-    units = tally.GetUnitsAsync().Result
+    units = tally.GetUnitsAsync[Unit]().Result
     unit_names = [unit.Name for unit in units]
-    items_df["[D] Units"] = items_df["Quantity Unit"].apply(
-        lambda x: find_closest_match(x, unit_names)
-    )
+    items_df["[D] Units"] = batch_match_column(items_df["Quantity Unit"], unit_names)
 
     return common_df, items_df
-
-
-def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
-    pass
-
-
-def create_voucher(common_df: pd.DataFrame, items_df: pd.DataFrame):
-    pass
