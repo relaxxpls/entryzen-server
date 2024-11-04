@@ -1,11 +1,9 @@
-from typing import List
 import pandas as pd
-import src.tally.loadclr as _
 from datetime import datetime
+from .helpers import convert_to_tally_date
+from .loadclr import tally
 
-from System import DateTime  # type: ignore # noqa: E402
 from System.Collections.Generic import List as CSList  # type: ignore # noqa: E402
-from TallyConnector.Services import TallyService  # type: ignore # noqa: E402
 from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
     LedgerGSTRegistrationDetails,
     LedgerMailingDetails,
@@ -16,11 +14,11 @@ from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
     GSTRateDetail,
 )
 from TallyConnector.Core.Models.Masters import Ledger  # type: ignore # noqa: E402
-from TallyConnector.Core.Converters.XMLConverterHelpers import TallyDate  # type: ignore # noqa: E402
 from TallyConnector.Core.Models.Masters.Inventory import StockItem, Unit, HSNDetail  # type: ignore # noqa: E402
 
-tally = TallyService()
-applicable_from = TallyDate(DateTime(datetime.now().year, 4, 1))
+
+# ? Start of the financial year
+applicable_from = convert_to_tally_date(f"01/04/{datetime.now().year}")
 
 DEFAULT_LEDGER = {
     "Purchase": {
@@ -34,7 +32,7 @@ DEFAULT_LEDGER = {
 }
 
 
-def create_party_account(common_df: pd.DataFrame, ledger_names: List[str]):
+def create_party_account(common_df: pd.DataFrame, ledger_names: list[str]):
     is_sales = common_df["Voucher Type"].iloc[0] == "Sales"
     perspective = "Customer" if is_sales else "Supplier"
 

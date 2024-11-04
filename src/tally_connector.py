@@ -1,12 +1,9 @@
-from .tally import loadclr as _
 import pandas as pd
+from .tally.loadclr import tally
 from .find_match import find_closest_matches, batch_match_column
 
-from TallyConnector.Services import TallyService  # type: ignore # noqa: E402
 from TallyConnector.Core.Models.Masters import Ledger  # type: ignore # noqa: E402
 from TallyConnector.Core.Models.Masters.Inventory import StockItem, Unit  # type: ignore # noqa: E402
-
-tally = TallyService()
 
 
 def get_tally_company() -> str:

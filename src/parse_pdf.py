@@ -14,7 +14,7 @@ Your task is to analyze invoice text and prepare it for Tally import.
 Extract the following information maintaining exact output format:
 
 for the invoice get the:
-Voucher Type,Customer Name,Customer Address,Customer State,Customer GSTIN,Supplier Name,Supplier Address,Supplier State,Supplier GSTIN,Document Number,Document Date
+Voucher Type,Customer Name,Customer Address,Customer State,Customer GSTIN,Supplier Name,Supplier Address,Supplier State,Supplier GSTIN,Document Number,Document Date,Narration
 
 for each good in the invoice,get the:
 HSN code,Product Name,Quantity,Quantity Unit,Rate,Currency,Discount,Taxable Amount,Tax Rate,Tax Amount,Total Amount
@@ -40,6 +40,8 @@ Important rules:
 14. For quantity unit use default value "Nos" if not given
 15. For other fields use default value empty string if not given
 16. Voucher Type must be one of: "Sales", "Purchase", "Receipt", "Payment", "Journal", "Contra"
+17. Keep Narration concise and include relevant details
+18. For any dates, use the format "%d/%m/%Y"
 
 The invoice text is as follows:
 {invoice_page}
