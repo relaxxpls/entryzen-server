@@ -183,7 +183,7 @@ def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
         ledger = Ledger()
         ledger.Name = DEFAULT_LEDGER["Tax"]["Name"]
         ledger.Group = DEFAULT_LEDGER["Tax"]["Group"]
-        ledger.TaxType = (TaxType.GST,)
+        ledger.TaxType = TaxType.GST
         ledger.GSTTaxType = "IGST"
         tally.PostLedgerAsync[Ledger](ledger).Result
 
