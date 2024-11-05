@@ -11,37 +11,47 @@ def create_prompt(company_name: str, invoice_page: str):
     return f"""
 You are an expert accounting system assistant specializing in Tally data entry automation for "{company_name}" company.
 Your task is to analyze invoice text and prepare it for Tally import.
-Extract the following information maintaining exact output format:
 
-for the invoice get the:
-Voucher Type,Customer Name,Customer Address,Customer State,Customer GSTIN,Supplier Name,Supplier Address,Supplier State,Supplier GSTIN,Document Number,Document Date,Narration
+If the invoice has a Voucher Type of "Sales" or "Purchase":
+    The output should have the following format:
+        Line 1: Contains column headers for the invoice data, in the order:
+            "Voucher Type","Customer Name","Customer Address","Customer State","Customer GSTIN","Supplier Name","Supplier Address","Supplier State","Supplier GSTIN","Document Number","Document Date","Narration"
+        Line 2: Contains the actual data for the invoice, in the same order as the headers in Line 1.
+        Line 3: Contains column headers for the invoice line items, in the order:
+            "HSN Code","Product Name","Quantity","Quantity Unit","Rate","Currency","Discount","Taxable Amount","Tax Rate","Tax Amount","Total Amount"
+        Line 4 and onwards: Contains the actual data for each line item, in the same order as the headers in Line 3.
 
-for each good in the invoice,get the:
-HSN code,Product Name,Quantity,Quantity Unit,Rate,Currency,Discount,Taxable Amount,Tax Rate,Tax Amount,Total Amount
+If the invoice has any other Voucher Type (e.g., Journal, Contra):
+    The output should have the following format:
+        Line 1: Contains column headers for the journal entry data, in the order:
+            "Voucher Type","Voucher Number","Voucher Date","Narration"
+        Line 2: Contains the actual data for the journal entry, in the same order as the headers in Line 1.
+        Line 3: Contains column headers for the journal entry account details, in the order:
+            "Account Name","Account Address","Account State","Account GSTIN","Account Group","Transaction Type","Debit Amount","Credit Amount"
+        Line 4 and onwards: Contains the actual data for each account, in the same order as the headers in Line 3.
 
 Important rules:
-1. Keep the output format strictly as follows:
-    line 1: invoice header titles in csv format
-    line 2: invoice header data in csv format
-    line 3: item details titles in csv format
-    line 4 onwards: item details data in csv format
-2. Output no other information
-3. Wrap comma separated values in double quotes and escape any double quotes in the values with another double quote
-4. Pages are separated by 3 new lines
-5. Ignore duplicate pages
-6. Remove any commas from numbers
-7. Product Name should be the exact name from invoice
-8. For decimal numbers, use maximum 2 decimal places
-9. If tax rate is given as IGST, use that directly. If given as CGST/SGST, sum them up
-10. For quantity use default value 1 if not given
-11. For discount use default value 0 if not given
-12. For tax rate use default value 0 if not given
-13. For tax amount use default value 0 if not given
-14. For quantity unit use default value "Nos" if not given
-15. For other fields use default value empty string if not given
-16. Voucher Type must be one of: "Sales", "Purchase", "Receipt", "Payment", "Journal", "Contra"
-17. Keep Narration concise and include relevant details
-18. For any dates, use the format "%d/%m/%Y"
+
+1. Wrap all comma-separated values in double quotes and escape any existing double quotes within the values with another double quote.
+2. In invoice text, each page data is separated by 3 new lines
+3. Ignore any duplicate pages.
+4. Remove any commas from numeric values.
+5. Use the exact product name from the invoice.
+6. For decimal numbers, use a maximum of 2 decimal places.
+7. If the tax rate is given as IGST, use that directly. If given as CGST/SGST, sum them up.
+8. If the quantity is not given, use a default value of 1.
+9. If the discount is not given, use a default value of 0.
+10. If the tax rate is not given, use a default value of 0.
+11. If the tax amount is not given, use a default value of 0.
+12. If the quantity unit is not given, use a default value of "Nos".
+13. If any other field is not given, use a default value of an empty string.
+14. The Voucher Type must be one of: "Sales", "Purchase", "Receipt", "Payment", "Journal", "Contra".
+15. The Narration should be concise and include relevant details.
+16. Use the date format "%d/%m/%Y" for any dates.
+17. For the Transaction Type, use either "Debit" or "Credit".
+18. If the Debit Amount or Credit Amount is not given, use a default value of 0.
+19. The Account Group must be one of the following: "Current Assets", "Current Liabilities", "Fixed Assets", "Indirect Expenses", "Investments", "Loans (Liability)", "Bank Accounts", "Cash-in-Hand", "Duties & Taxes", "Provisions", "Reserves & Surplus", "Secured Loans", "Stock-in-Hand", "Sundry Creditors", "Sundry Debtors", "Unsecured Loans".
+20. For any Account Names not directly mentioned in the invoice, generate names based on using concise and relevant information.
 
 The invoice text is as follows:
 {invoice_page}

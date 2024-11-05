@@ -87,6 +87,7 @@ def create_units(items_df: pd.DataFrame):
     for idx, unit_name in enumerate(items_df["[D] Units"]):
         if pd.isna(unit_name):
             unit_name = items_df["Quantity Unit"].iloc[idx]
+            items_df.loc[idx, "[D] Units"] = unit_name
 
         if unit_name in unit_names:
             continue
