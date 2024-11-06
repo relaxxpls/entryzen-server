@@ -24,7 +24,7 @@ If the invoice has a Voucher Type of "Sales" or "Purchase":
 If the invoice has any other Voucher Type (e.g., Journal, Contra):
     The output should have the following format:
         Line 1: Contains column headers for the journal entry data, in the order:
-            "Voucher Type","Voucher Number","Voucher Date","Narration"
+            "Voucher Type","Voucher Date","Narration"
         Line 2: Contains the actual data for the journal entry, in the same order as the headers in Line 1.
         Line 3: Contains column headers for the journal entry account details, in the order:
             "Account Name","Account Address","Account State","Account GSTIN","Account Group","Transaction Type","Debit Amount","Credit Amount"
@@ -32,26 +32,27 @@ If the invoice has any other Voucher Type (e.g., Journal, Contra):
 
 Important rules:
 
-1. Wrap all comma-separated values in double quotes and escape any existing double quotes within the values with another double quote.
-2. In invoice text, each page data is separated by 3 new lines
-3. Ignore any duplicate pages.
-4. Remove any commas from numeric values.
-5. Use the exact product name from the invoice.
-6. For decimal numbers, use a maximum of 2 decimal places.
-7. If the tax rate is given as IGST, use that directly. If given as CGST/SGST, sum them up.
-8. If the quantity is not given, use a default value of 1.
-9. If the discount is not given, use a default value of 0.
-10. If the tax rate is not given, use a default value of 0.
-11. If the tax amount is not given, use a default value of 0.
-12. If the quantity unit is not given, use a default value of "Nos".
-13. If any other field is not given, use a default value of an empty string.
-14. The Voucher Type must be one of: "Sales", "Purchase", "Receipt", "Payment", "Journal", "Contra".
-15. The Narration should be concise and include relevant details.
-16. Use the date format "%d/%m/%Y" for any dates.
-17. For the Transaction Type, use either "Debit" or "Credit".
-18. If the Debit Amount or Credit Amount is not given, use a default value of 0.
-19. The Account Group must be one of the following: "Current Assets", "Current Liabilities", "Fixed Assets", "Indirect Expenses", "Investments", "Loans (Liability)", "Bank Accounts", "Cash-in-Hand", "Duties & Taxes", "Provisions", "Reserves & Surplus", "Secured Loans", "Stock-in-Hand", "Sundry Creditors", "Sundry Debtors", "Unsecured Loans".
-20. For any Account Names not directly mentioned in the invoice, generate names based on using concise and relevant information.
+* Follow the exact format as mentioned above and output no other information
+* Wrap all comma-separated values in double quotes and escape any existing double quotes within the values with another double quote.
+* In invoice text, each page data is separated by 3 new lines
+* Ignore any duplicate pages.
+* Remove any commas from numeric values.
+* Use the exact product name from the invoice.
+* For decimal numbers, use a maximum of 2 decimal places.
+* If the tax rate is given as IGST, use that directly. If given as CGST/SGST, sum them up.
+* If the quantity is not given, use a default value of 1.
+* If the discount is not given, use a default value of 0.
+* If the tax rate is not given, use a default value of 0.
+* If the tax amount is not given, use a default value of 0.
+* If the quantity unit is not given, use a default value of "Nos".
+* If any other field is not given, use a default value of an empty string.
+* The Voucher Type must be one of: "Sales", "Purchase", "Receipt", "Payment", "Journal", "Contra".
+* The Narration should be concise and include relevant details.
+* Use the date format "%d/%m/%Y" for any dates.
+* For the Transaction Type, use either "Debit" or "Credit".
+* If the Debit Amount or Credit Amount is not given, use a default value of 0.
+* The Account Group must be one of the following: "Current Assets", "Current Liabilities", "Fixed Assets", "Indirect Expenses", "Investments", "Loans (Liability)", "Bank Accounts", "Cash-in-Hand", "Duties & Taxes", "Provisions", "Reserves & Surplus", "Secured Loans", "Stock-in-Hand", "Sundry Creditors", "Sundry Debtors", "Unsecured Loans".
+* For any Account Names not directly mentioned in the invoice, generate names based on using concise and relevant information.
 
 The invoice text is as follows:
 {invoice_page}
@@ -60,8 +61,10 @@ The invoice text is as follows:
 
 def process_csv_string(csv_string: str):
     """Split the CSV string into lines"""
-    csv_string = csv_string.replace("```csv\n", "").replace("```", "")
     lines = csv_string.strip().split("\n")
+    if csv_string.startswith("```"):
+        lines = lines[1:-1]
+
     common_df = pd.read_csv(io.StringIO("\n".join(lines[:2])))
     item_df = pd.read_csv(io.StringIO("\n".join(lines[2:])))
 
