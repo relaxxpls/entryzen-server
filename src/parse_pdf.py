@@ -32,7 +32,9 @@ If the invoice has any other Voucher Type (e.g., Journal, Contra):
 
 Important rules:
 
-* Follow the exact format as mentioned above and output no other information
+* Output no other information except for the csv data
+* Prefer Journal entries for non-Sales/Purchase Invoices
+* If voucher type is Journal, create seperate accounts for different types of taxes present
 * Wrap all comma-separated values in double quotes and escape any existing double quotes within the values with another double quote.
 * In invoice text, each page data is separated by 3 new lines
 * Ignore any duplicate pages.

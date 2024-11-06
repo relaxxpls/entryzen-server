@@ -1,7 +1,7 @@
 import pandas as pd
 
 
-def verify_amounts(items_df: pd.DataFrame):
+def verify_amounts_sales_purchase(items_df: pd.DataFrame):
     errors: list[str] = []
     for idx, row in items_df.iterrows():
         rate = row["Rate"]
@@ -29,3 +29,21 @@ def verify_amounts(items_df: pd.DataFrame):
             )
 
     return errors
+
+
+def verify_amounts_journal(ledgers_df: pd.DataFrame):
+    errors: list[str] = []
+    net_debit = ledgers_df["Debit Amount"].sum()
+    net_credit = ledgers_df["Credit Amount"].sum()
+    if abs(net_debit - net_credit) > 0.01:
+        errors.append(f"Net Debit {net_debit}, Net Credit: {net_credit}")
+
+    return errors
+
+
+def verify_amounts(common_df: pd.DataFrame, items_df: pd.DataFrame):
+    voucher_type = common_df["Voucher Type"].iloc[0]
+    if voucher_type in ["Sales", "Purchase"]:
+        return verify_amounts_sales_purchase(items_df)
+    else:
+        return verify_amounts_journal(items_df)

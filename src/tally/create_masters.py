@@ -37,6 +37,9 @@ DEFAULT_LEDGER = {
 }
 
 
+TALLY_NA = "\u0004 Not Applicable"
+
+
 def create_party_account(common_df: pd.DataFrame, ledger_names: list[str]):
     is_sales = common_df["Voucher Type"].iloc[0] == "Sales"
     perspective = "Customer" if is_sales else "Supplier"
@@ -54,19 +57,23 @@ def create_party_account(common_df: pd.DataFrame, ledger_names: list[str]):
     ledger.Group = "Sundry Debtors" if is_sales else "Sundry Creditors - Purchases"
 
     # Create a LedgerGSTRegistrationDetails object
-    gst_registration_details = LedgerGSTRegistrationDetails()
-    gst_registration_details.GSTIN = common_df[f"{perspective} GSTIN"].iloc[0]
-    gst_registration_details.State = common_df[f"{perspective} State"].iloc[0]
-    gst_registration_details.GSTRegistrationType = GSTRegistrationType.Regular
-    gst_registration_details.ApplicableFrom = applicable_from
-    ledger.LedgerGSTRegistrationDetails = CSList[LedgerGSTRegistrationDetails]()
-    ledger.LedgerGSTRegistrationDetails.Add(gst_registration_details)
+    gstin = common_df[f"{perspective} GSTIN"].iloc[0]
+    if not pd.isna(gstin):
+        gst_registration_details = LedgerGSTRegistrationDetails()
+        gst_registration_details.GSTIN = common_df[f"{perspective} GSTIN"].iloc[0]
+        gst_registration_details.State = (
+            common_df[f"{perspective} State"].iloc[0] or TALLY_NA
+        )
+        gst_registration_details.GSTRegistrationType = GSTRegistrationType.Regular
+        gst_registration_details.ApplicableFrom = applicable_from
+        ledger.LedgerGSTRegistrationDetails = CSList[LedgerGSTRegistrationDetails]()
+        ledger.LedgerGSTRegistrationDetails.Add(gst_registration_details)
 
     # Create a LedgerMailingDetails object
     mailing_details = LedgerMailingDetails()
-    mailing_details.Address = common_df[f"{perspective} Address"].iloc[0]
+    mailing_details.Address = common_df[f"{perspective} Address"].iloc[0] or ""
     mailing_details.MailingName = party_account
-    mailing_details.State = common_df[f"{perspective} State"].iloc[0]
+    mailing_details.State = common_df[f"{perspective} State"].iloc[0] or TALLY_NA
     mailing_details.Country = "India"
     # mailing_details.PinCode = common_df[f"{perspective} Pincode"].iloc[0]
     mailing_details.ApplicableFrom = applicable_from
@@ -159,7 +166,7 @@ def create_stock_items(items_df: pd.DataFrame):
         items_df.loc[idx, "[D] Stock Item"] = stock_item_name
 
 
-def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
+def create_masters_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFrame):
     ledgers = tally.GetLedgersAsync[Ledger]().Result
     ledger_names = [ledger.Name for ledger in ledgers]
 
@@ -197,3 +204,55 @@ def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
 
     # ? Create stock items
     create_stock_items(items_df)
+
+
+def create_masters_journal(ledgers_df: pd.DataFrame):
+    ledgers = tally.GetLedgersAsync[Ledger]().Result
+    ledger_names = [ledger.Name for ledger in ledgers]
+
+    for _, item in ledgers_df.iterrows():
+        ledger_name = item["[D] Account Name"]
+        if pd.isna(ledger_name):
+            ledger_name = item["Account Name"]
+            item["[D] Account Name"] = ledger_name
+
+        if ledger_name in ledger_names:
+            return
+
+        ledger = Ledger()
+        ledger.Name = ledger_name
+        ledger.Group = item["Account Group"]
+
+        # Create a LedgerGSTRegistrationDetails object
+        gst_registration_details = LedgerGSTRegistrationDetails()
+        gst_registration_details.GSTIN = item["Account GSTIN"]
+        gst_registration_details.State = item["Account State"]
+        gst_registration_details.GSTRegistrationType = GSTRegistrationType.Regular
+        gst_registration_details.ApplicableFrom = applicable_from
+        ledger.LedgerGSTRegistrationDetails = CSList[LedgerGSTRegistrationDetails]()
+        ledger.LedgerGSTRegistrationDetails.Add(gst_registration_details)
+
+        # Create a LedgerMailingDetails object
+        mailing_details = LedgerMailingDetails()
+        mailing_details.Address = item["Account Address"]
+        mailing_details.MailingName = ledger_name
+        mailing_details.State = item["Account State"]
+        mailing_details.Country = "India"
+        # mailing_details.PinCode = common_df[f"{perspective} Pincode"].iloc[0]
+        mailing_details.ApplicableFrom = applicable_from
+        ledger.LedgerMailingDetails = CSList[LedgerMailingDetails]()
+        ledger.LedgerMailingDetails.Add(mailing_details)
+
+        tally.PostLedgerAsync[Ledger](ledger).Result
+
+        # ? Update ledger names
+        ledger_names.append(ledger_name)
+        print(f"Created Ledger: {ledger_name}")
+
+
+def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
+    voucher_type = common_df["Voucher Type"].iloc[0]
+    if voucher_type in ["Sales", "Purchase"]:
+        create_masters_sales_purchase(common_df, items_df)
+    else:
+        create_masters_journal(items_df)

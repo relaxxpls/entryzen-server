@@ -19,7 +19,29 @@ from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
 )
 
 
-def create_vouchers(common_df: pd.DataFrame, items_df: pd.DataFrame):
+def create_journal_vouchers(common_df: pd.DataFrame, ledgers_df: pd.DataFrame):
+    voucher_type = common_df["Voucher Type"].iloc[0]
+
+    voucher = Voucher()
+    voucher.VoucherType = voucher_type
+    voucher.Date = convert_to_tally_date(datetime.now())
+    voucher.Narration = common_df["Narration"].iloc[0]
+
+    voucher.Ledgers = CSList[VoucherLedger]()
+
+    for idx, item in ledgers_df.iterrows():
+        ledger = VoucherLedger()
+        ledger.IndexNumber = idx
+        ledger.LedgerName = item["[D] Account Name"]
+        amount = item["Credit Amount"] - item["Debit Amount"]
+        ledger.Amount = TallyAmount(Decimal(amount))
+
+        voucher.Ledgers.Add(ledger)
+
+    tally.PostVoucherAsync(voucher).Result
+
+
+def create_vouchers_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFrame):
     multiplier = 1 if common_df["Voucher Type"].iloc[0] == "Sales" else -1
     voucher_type = common_df["Voucher Type"].iloc[0]
 
@@ -73,3 +95,11 @@ def create_vouchers(common_df: pd.DataFrame, items_df: pd.DataFrame):
     # ledger_sgst.Amount = common_df["SGST"].iloc[0] * multiplier
 
     tally.PostVoucherAsync(voucher).Result
+
+
+def create_vouchers(common_df: pd.DataFrame, items_df: pd.DataFrame):
+    voucher_type = common_df["Voucher Type"].iloc[0]
+    if voucher_type in ["Sales", "Purchase"]:
+        create_vouchers_sales_purchase(common_df, items_df)
+    else:
+        create_journal_vouchers(common_df, items_df)

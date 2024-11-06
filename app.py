@@ -41,7 +41,7 @@ st.title("📤 Upload Invoice")
 
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
-supported_vouchers = ["Purchase", "Sales"]
+supported_vouchers = ["Purchase", "Sales", "Journal"]
 
 msg_content = None
 if DEBUG:
@@ -77,9 +77,8 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
                     state="complete",
                     expanded=False,
                 )
-                st.session_state.is_exportable = (
-                    False  # Reset export flag when parsing new invoice
-                )
+                st.session_state.is_exportable = False  # Reset when parsing new invoice
+
             except Exception as e:
                 print(e)
                 status.update(
@@ -98,14 +97,15 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
         st.session_state.items_df = st.data_editor(
             st.session_state.items_df,
             num_rows="dynamic",
-            disabled=("Quantity Unit", "Product Name"),
+            disabled=("Quantity Unit", "Product Name", "Account Name"),
             key="items_df_editor",
         )
 
         col1, col2 = st.columns([2, 1], gap="large")
 
+        voucher_type = st.session_state.common_df["Voucher Type"].iloc[0]
         col1.write("#### Verify Amounts")
-        errors = verify_amounts(st.session_state.items_df)
+        errors = verify_amounts(st.session_state.common_df, st.session_state.items_df)
 
         if errors:
             col1.error("\n\n".join(errors))
@@ -116,10 +116,16 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
 
         # display net total and net tax
         col2.write("#### Net Amounts")
-        net_total = st.session_state.items_df["Total Amount"].sum().round(2)
-        net_tax = st.session_state.items_df["Tax Amount"].sum().round(2)
-        col2.write(f"##### Net Tax: {net_tax}")
-        col2.write(f"##### Net Total: {net_total}")
+        if voucher_type in ["Sales", "Purchase"]:
+            net_total = st.session_state.items_df["Total Amount"].sum().round(2)
+            net_tax = st.session_state.items_df["Tax Amount"].sum().round(2)
+            col2.write(f"##### Net Tax: {net_tax}")
+            col2.write(f"##### Net Total: {net_total}")
+        else:
+            net_credit = st.session_state.items_df["Credit Amount"].sum().round(2)
+            net_debit = st.session_state.items_df["Debit Amount"].sum().round(2)
+            col2.write(f"##### Net Debit: {net_debit}")
+            col2.write(f"##### Net Credit: {net_credit}")
 
     if st.session_state.is_exportable:
         if st.button(
