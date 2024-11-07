@@ -1,6 +1,6 @@
 import streamlit as st
 from src.verify_df import verify_amounts
-from src.parse_pdf import parse_pdf, process_csv_string
+from src.parse_pdf import parse_pdf, process_csv_string, is_journal_voucher
 from src.tally_connector import get_tally_company, match_masters
 from src.tally.create_masters import create_masters
 from src.tally.create_vouchers import create_vouchers
@@ -41,7 +41,6 @@ st.title("📤 Upload Invoice")
 
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
-supported_vouchers = ["Purchase", "Sales", "Journal"]
 
 msg_content = None
 if DEBUG:
@@ -60,12 +59,6 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
                 elif uploaded_file:
                     st.session_state.common_df, st.session_state.items_df = parse_pdf(
                         company_name, uploaded_file
-                    )
-
-                voucher_type = st.session_state.common_df["Voucher Type"].iloc[0]
-                if voucher_type not in supported_vouchers:
-                    raise Exception(
-                        f"Detected Voucher Type: {voucher_type}. Supported Voucher Types: {supported_vouchers}"
                     )
 
                 st.write("🔍 Matching Tally Masters")
@@ -90,20 +83,20 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
         st.write("### Parsed Invoice Details")
         st.write("#### Invoice Summary:")
         st.session_state.common_df = st.data_editor(
-            st.session_state.common_df, hide_index=True, key="common_df_editor"
+            st.session_state.common_df,
+            hide_index=True,
+            on_change=lambda data: st.session_state.common_df.update(data),
         )
 
         st.write("#### Invoice Items:")
-        st.session_state.items_df = st.data_editor(
+        st.data_editor(
             st.session_state.items_df,
             num_rows="dynamic",
             disabled=("Quantity Unit", "Product Name", "Account Name"),
-            key="items_df_editor",
+            on_change=lambda data: st.session_state.items_df.update(data),
         )
 
         col1, col2 = st.columns([2, 1], gap="large")
-
-        voucher_type = st.session_state.common_df["Voucher Type"].iloc[0]
         col1.write("#### Verify Amounts")
         errors = verify_amounts(st.session_state.common_df, st.session_state.items_df)
 
@@ -114,18 +107,17 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
             col1.success("Amounts verified successfully!")
             st.session_state.is_exportable = True
 
-        # display net total and net tax
         col2.write("#### Net Amounts")
-        if voucher_type in ["Sales", "Purchase"]:
-            net_total = st.session_state.items_df["Total Amount"].sum().round(2)
-            net_tax = st.session_state.items_df["Tax Amount"].sum().round(2)
-            col2.write(f"##### Net Tax: {net_tax}")
-            col2.write(f"##### Net Total: {net_total}")
-        else:
-            net_credit = st.session_state.items_df["Credit Amount"].sum().round(2)
-            net_debit = st.session_state.items_df["Debit Amount"].sum().round(2)
+        if is_journal_voucher(st.session_state.common_df):
+            net_credit = st.session_state.items_df["Credit Amount"].sum().round(1)
+            net_debit = st.session_state.items_df["Debit Amount"].sum().round(1)
             col2.write(f"##### Net Debit: {net_debit}")
             col2.write(f"##### Net Credit: {net_credit}")
+        else:
+            net_total = st.session_state.items_df["Total Amount"].sum().round(1)
+            net_tax = st.session_state.items_df["Tax Amount"].sum().round(1)
+            col2.write(f"##### Net Tax: {net_tax}")
+            col2.write(f"##### Net Total: {net_total}")
 
     if st.session_state.is_exportable:
         if st.button(

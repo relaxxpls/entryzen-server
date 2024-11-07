@@ -1,5 +1,7 @@
 import pandas as pd
 from datetime import datetime
+
+from src.parse_pdf import is_journal_voucher
 from .helpers import convert_to_tally_date
 from .loadclr import tally
 
@@ -125,9 +127,8 @@ def create_stock_items(items_df: pd.DataFrame):
 
         hsn_code = items_df["HSN code"].iloc[idx]
         if not pd.isna(hsn_code):
-            hsn_code = str(hsn_code)
             hsn_details = HSNDetail()
-            hsn_details.HSNCode = hsn_code
+            hsn_details.HSNCode = str(hsn_code)
             hsn_details.ApplicableFrom = applicable_from
             hsn_details.SourceOfHSNDetails = "Specify Details Here"
             # hsn_details.HSNDescription = "Description"
@@ -224,19 +225,21 @@ def create_masters_journal(ledgers_df: pd.DataFrame):
         ledger.Group = item["Account Group"]
 
         # Create a LedgerGSTRegistrationDetails object
-        gst_registration_details = LedgerGSTRegistrationDetails()
-        gst_registration_details.GSTIN = item["Account GSTIN"]
-        gst_registration_details.State = item["Account State"]
-        gst_registration_details.GSTRegistrationType = GSTRegistrationType.Regular
-        gst_registration_details.ApplicableFrom = applicable_from
-        ledger.LedgerGSTRegistrationDetails = CSList[LedgerGSTRegistrationDetails]()
-        ledger.LedgerGSTRegistrationDetails.Add(gst_registration_details)
+        gstin = item["Account GSTIN"]
+        if not pd.isna(gstin):
+            gst_registration_details = LedgerGSTRegistrationDetails()
+            gst_registration_details.GSTIN = str(gstin)
+            gst_registration_details.State = item["Account State"] or TALLY_NA
+            gst_registration_details.GSTRegistrationType = GSTRegistrationType.Regular
+            gst_registration_details.ApplicableFrom = applicable_from
+            ledger.LedgerGSTRegistrationDetails = CSList[LedgerGSTRegistrationDetails]()
+            ledger.LedgerGSTRegistrationDetails.Add(gst_registration_details)
 
         # Create a LedgerMailingDetails object
         mailing_details = LedgerMailingDetails()
-        mailing_details.Address = item["Account Address"]
+        mailing_details.Address = item["Account Address"] or ""
         mailing_details.MailingName = ledger_name
-        mailing_details.State = item["Account State"]
+        mailing_details.State = item["Account State"] or TALLY_NA
         mailing_details.Country = "India"
         # mailing_details.PinCode = common_df[f"{perspective} Pincode"].iloc[0]
         mailing_details.ApplicableFrom = applicable_from
@@ -251,8 +254,7 @@ def create_masters_journal(ledgers_df: pd.DataFrame):
 
 
 def create_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
-    voucher_type = common_df["Voucher Type"].iloc[0]
-    if voucher_type in ["Sales", "Purchase"]:
-        create_masters_sales_purchase(common_df, items_df)
-    else:
+    if is_journal_voucher(common_df):
         create_masters_journal(items_df)
+    else:
+        create_masters_sales_purchase(common_df, items_df)

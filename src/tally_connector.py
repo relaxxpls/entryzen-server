@@ -1,4 +1,6 @@
 import pandas as pd
+
+from .parse_pdf import is_journal_voucher
 from .tally.loadclr import tally
 from .find_match import find_closest_matches, batch_match_column
 
@@ -26,14 +28,6 @@ def match_masters_journal(ledgers_df: pd.DataFrame):
     return ledgers_df
 
 
-def match_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
-    voucher_type = common_df["Voucher Type"].iloc[0]
-    if voucher_type in ["Sales", "Purchase"]:
-        match_masters_sales_purchase(common_df, items_df)
-    else:
-        match_masters_journal(items_df)
-
-
 def match_masters_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFrame):
     # ? Match supplier name to ledger name
     ledgers = tally.GetLedgersAsync[Ledger]().Result
@@ -58,3 +52,10 @@ def match_masters_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFrame
     items_df["[D] Units"] = batch_match_column(items_df["Quantity Unit"], unit_names)
 
     return common_df, items_df
+
+
+def match_masters(common_df: pd.DataFrame, items_df: pd.DataFrame):
+    if is_journal_voucher(common_df):
+        match_masters_journal(items_df)
+    else:
+        match_masters_sales_purchase(common_df, items_df)

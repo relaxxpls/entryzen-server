@@ -1,5 +1,7 @@
 import pandas as pd
 from datetime import datetime
+
+from src.parse_pdf import is_journal_voucher
 from .loadclr import tally
 from .helpers import convert_to_tally_date
 from .create_masters import DEFAULT_LEDGER
@@ -19,7 +21,11 @@ from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
 )
 
 
-def create_journal_vouchers(common_df: pd.DataFrame, ledgers_df: pd.DataFrame):
+def parse_amount(amount: str):
+    return TallyAmount(Decimal(amount.round(1)))
+
+
+def create_vouchers_journal(common_df: pd.DataFrame, ledgers_df: pd.DataFrame):
     voucher_type = common_df["Voucher Type"].iloc[0]
 
     voucher = Voucher()
@@ -34,7 +40,7 @@ def create_journal_vouchers(common_df: pd.DataFrame, ledgers_df: pd.DataFrame):
         ledger.IndexNumber = idx
         ledger.LedgerName = item["[D] Account Name"]
         amount = item["Credit Amount"] - item["Debit Amount"]
-        ledger.Amount = TallyAmount(Decimal(amount))
+        ledger.Amount = parse_amount(amount)
 
         voucher.Ledgers.Add(ledger)
 
@@ -57,7 +63,7 @@ def create_vouchers_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFra
     for idx, item in items_df.iterrows():
         ledger_contra = BaseVoucherLedger()
         ledger_contra.LedgerName = DEFAULT_LEDGER[voucher_type]["Name"]
-        ledger_contra.Amount = TallyAmount(Decimal(item["Taxable Amount"] * multiplier))
+        ledger_contra.Amount = parse_amount(item["Total Amount"] * multiplier)
 
         inventory_allocation = AllInventoryAllocations()
         inventory_allocation.IndexNumber = idx
@@ -76,11 +82,11 @@ def create_vouchers_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFra
 
     ledger_party = VoucherLedger()
     ledger_party.LedgerName = common_df["[D] Party Account"].iloc[0]
-    ledger_party.Amount = TallyAmount(Decimal(net_total * multiplier * -1))
+    ledger_party.Amount = parse_amount(net_total * multiplier * -1)
 
     ledger_igst = VoucherLedger()
     ledger_igst.LedgerName = DEFAULT_LEDGER["Tax"]["Name"]
-    ledger_igst.Amount = TallyAmount(Decimal(net_tax * multiplier))
+    ledger_igst.Amount = parse_amount(net_tax * multiplier)
 
     voucher.Ledgers = CSList[VoucherLedger]()
     voucher.Ledgers.Add(ledger_party)
@@ -98,8 +104,7 @@ def create_vouchers_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFra
 
 
 def create_vouchers(common_df: pd.DataFrame, items_df: pd.DataFrame):
-    voucher_type = common_df["Voucher Type"].iloc[0]
-    if voucher_type in ["Sales", "Purchase"]:
-        create_vouchers_sales_purchase(common_df, items_df)
+    if is_journal_voucher(common_df):
+        create_vouchers_journal(common_df, items_df)
     else:
-        create_journal_vouchers(common_df, items_df)
+        create_vouchers_sales_purchase(common_df, items_df)
