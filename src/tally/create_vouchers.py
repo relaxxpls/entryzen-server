@@ -22,7 +22,7 @@ from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
 
 
 def parse_amount(amount: str):
-    return TallyAmount(Decimal(amount.round(1)))
+    return TallyAmount(Decimal(round(amount, 1)))
 
 
 def create_vouchers_journal(common_df: pd.DataFrame, ledgers_df: pd.DataFrame):
@@ -63,7 +63,7 @@ def create_vouchers_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFra
     for idx, item in items_df.iterrows():
         ledger_contra = BaseVoucherLedger()
         ledger_contra.LedgerName = DEFAULT_LEDGER[voucher_type]["Name"]
-        ledger_contra.Amount = parse_amount(item["Total Amount"] * multiplier)
+        ledger_contra.Amount = parse_amount(item["Taxable Amount"] * multiplier)
 
         inventory_allocation = AllInventoryAllocations()
         inventory_allocation.IndexNumber = idx

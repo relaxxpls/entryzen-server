@@ -9,22 +9,22 @@ def verify_amounts_sales_purchase(items_df: pd.DataFrame):
         rate = row["Rate"]
         discount = row["Discount"]
         quantity = row["Quantity"]
-        taxable_amount = row["Taxable Amount"]
-        taxable_amount_calc = rate * quantity - discount
+        taxable_amount = row["Taxable Amount"].round(1)
+        taxable_amount_calc = (rate * quantity - discount).round(1)
         if abs(taxable_amount - taxable_amount_calc) > 0.1:
             errors.append(
                 f"[Row {idx}] Taxable Amount {taxable_amount}, Calculated Taxable Amount: {taxable_amount_calc}"
             )
 
-        tax_amount = row["Tax Amount"]
-        tax_amount_calc = taxable_amount * row["Tax Rate"] / 100
+        tax_amount = row["Tax Amount"].round(1)
+        tax_amount_calc = (taxable_amount * row["Tax Rate"] / 100).round(1)
         if abs(tax_amount - tax_amount_calc) > 0.1:
             errors.append(
                 f"[Row {idx}] Tax Amount {tax_amount}, Calculated Tax Amount: {tax_amount_calc}"
             )
 
-        total_amount = row["Total Amount"]
-        total_amount_calc = taxable_amount + tax_amount
+        total_amount = row["Total Amount"].round(1)
+        total_amount_calc = (taxable_amount + tax_amount).round(1)
         if abs(total_amount - total_amount_calc) > 0.1:
             errors.append(
                 f"[Row {idx}] Total Amount {total_amount}, Calculated Total Amount: {total_amount_calc}"

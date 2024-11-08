@@ -125,7 +125,7 @@ def create_stock_items(items_df: pd.DataFrame):
         stock_item.Name = stock_item_name
         stock_item.BaseUnit = items_df["[D] Units"].iloc[idx]
 
-        hsn_code = items_df["HSN code"].iloc[idx]
+        hsn_code = items_df["HSN Code"].iloc[idx]
         if not pd.isna(hsn_code):
             hsn_details = HSNDetail()
             hsn_details.HSNCode = str(hsn_code)
