@@ -27,7 +27,11 @@ streamlit = "^1.40.0"
 torch = "^2.5.1"
 tqdm = "^4.67.0"
 transformers = "^4.46.2"
-unstructured = {extras = ["pdf"], version = "^0.16.5"}
+unstructured = { extras = ["local-inference"], version = "^0.16.5" }
+python-doctr = {extras = ["contrib", "html", "torch", "viz"], version = "^0.10.0"}
+flask = "^3.1.0"
+gunicorn = "^23.0.0"
+flask-cors = "^5.0.0"
 
 [tool.poetry.group.dev.dependencies]
 jupyter = "^1.1.1"
