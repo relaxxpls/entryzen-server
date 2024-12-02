@@ -3,6 +3,8 @@ import pymupdf
 from langchain_openai import ChatOpenAI
 import dotenv
 import io
+from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
 
 dotenv.load_dotenv()
 
@@ -77,14 +79,55 @@ def process_csv_string(csv_string: str):
     return common_df, item_df
 
 
-def parse_pdf(company_name: str, pdf_file: io.BytesIO | str):
-    is_file_path = isinstance(pdf_file, str)
-    if is_file_path:
-        pages = pymupdf.get_text(pdf_file)
+def extract_text_from_pdf_ocr(pdf_file: io.BytesIO | str) -> list[str]:
+    doc = DocumentFile.from_pdf(
+        pdf_file.read() if isinstance(pdf_file, io.BytesIO) else pdf_file
+    )
+    predictor = ocr_predictor(pretrained=True)
+    result = predictor(doc)
+
+    # Extract text from OCR results
+    pages = []
+    for page in result.pages:
+        page_text = []
+        for block in page.blocks:
+            for line in block.lines:
+                for word in line.words:
+                    page_text.append(word.value)
+        pages.append(" ".join(page_text))
+
+    return pages
+
+
+def extract_text_from_pdf(pdf_file: io.BytesIO | str) -> str:
+    """Extract text from PDF, using OCR if needed"""
+
+    if isinstance(pdf_file, str):
+        doc = pymupdf.open(pdf_file)
     else:
-        with pymupdf.open(stream=pdf_file.read()) as doc:
-            pages = [page.get_text() for page in doc]
-    text = "\n\n\n".join(pages)
+        doc = pymupdf.open(stream=pdf_file.read())
+
+    pages = []
+    needs_ocr = True
+
+    for page in doc:
+        text = page.get_text()
+        # Check if page has meaningful text (more than just whitespace)
+        if len(text.strip()) > 5:  # Adjust threshold as needed
+            needs_ocr = False
+        pages.append(text)
+
+    doc.close()
+
+    # If minimal text was found, use OCR
+    if needs_ocr:
+        pages = extract_text_from_pdf_ocr(pdf_file)
+
+    return "\n\n\n".join(pages)
+
+
+def parse_pdf(company_name: str, pdf_file: io.BytesIO | str):
+    text = extract_text_from_pdf(pdf_file)
 
     llm = ChatOpenAI(model="gpt-4o", temperature=0.2, top_p=0.2)
     prompt = create_prompt(company_name, text)
@@ -93,6 +136,6 @@ def parse_pdf(company_name: str, pdf_file: io.BytesIO | str):
     print("ChatGPT Response Metadata:", msg.response_metadata)
 
     common_df, items_df = process_csv_string(msg.content)
-    common_df["filename"] = pdf_file if is_file_path else pdf_file.name
+    common_df["filename"] = pdf_file if isinstance(pdf_file, str) else pdf_file.name
 
     return common_df, items_df
