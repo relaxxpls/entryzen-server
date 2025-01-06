@@ -58,7 +58,7 @@ def create_party_account(common_df: pd.DataFrame, ledger_names: list[str]):
     gstin = common_df[f"{perspective} GSTIN"].iloc[0]
     if not pd.isna(gstin):
         gst_registration_details = LedgerGSTRegistrationDetails()
-        gst_registration_details.GSTIN = common_df[f"{perspective} GSTIN"].iloc[0]
+        gst_registration_details.GSTIN = gstin
         gst_registration_details.State = (
             common_df[f"{perspective} State"].iloc[0] or TALLY_NA
         )
@@ -228,7 +228,7 @@ def create_masters_journal(ledgers_df: pd.DataFrame):
             item["[D] Account Name"] = ledger_name
 
         if ledger_name in ledger_names:
-            return
+            continue
 
         ledger = Ledger()
         ledger.Name = ledger_name
