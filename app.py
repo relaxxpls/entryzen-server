@@ -1,5 +1,5 @@
 import streamlit as st
-from src.verify_df import verify_amounts
+from src.verify_df import ROUND_DIGITS, verify_amounts
 from src.parse_pdf import parse_pdf, process_csv_string, is_journal_voucher
 from src.tally_connector import get_tally_company, match_masters
 from src.tally.create_masters import create_masters
@@ -17,7 +17,7 @@ if "items_df" not in st.session_state:
 
 col1, col2 = st.columns([4, 1], vertical_alignment="center")
 
-DEBUG = True
+DEBUG = False
 
 # ? Display status of tally connection
 status_placeholder = col1.empty()
@@ -109,13 +109,19 @@ if company_name is not None and (uploaded_file is not None or msg_content is not
 
         col2.write("#### Net Amounts")
         if is_journal_voucher(st.session_state.common_df):
-            net_credit = st.session_state.items_df["Credit Amount"].sum().round(1)
-            net_debit = st.session_state.items_df["Debit Amount"].sum().round(1)
+            net_credit = round(
+                st.session_state.items_df["Credit Amount"].sum(), ROUND_DIGITS
+            )
+            net_debit = round(
+                st.session_state.items_df["Debit Amount"].sum(), ROUND_DIGITS
+            )
             col2.write(f"##### Net Debit: {net_debit}")
             col2.write(f"##### Net Credit: {net_credit}")
         else:
-            net_total = st.session_state.items_df["Total Amount"].sum().round(1)
-            net_tax = st.session_state.items_df["Tax Amount"].sum().round(1)
+            net_total = round(
+                st.session_state.items_df["Total Amount"].sum(), ROUND_DIGITS
+            )
+            net_tax = round(st.session_state.items_df["Tax Amount"].sum(), ROUND_DIGITS)
             col2.write(f"##### Net Tax: {net_tax}")
             col2.write(f"##### Net Total: {net_total}")
 

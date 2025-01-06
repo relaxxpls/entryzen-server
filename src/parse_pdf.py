@@ -18,7 +18,7 @@ Your task is to analyze invoice text and prepare it for Tally import from the pe
 
 First identify the Voucher Type using the guidelines below:
 - If the invoice does not involve a sale or purchase of stock items or you are unsure, use "Journal" as the Voucher Type.
-- Else create a Sales or Purchase entry from the perspective of "{company_name}". If the company is the customer, use "Purchase", else use "Sales".
+- Else create a Sales or Purchase entry from the perspective of "{company_name}". If the company name seems like the customer name, use "Purchase", else use "Sales".
 
 Next, Output the invoice data in CSV format based on the Voucher Type:
 If the invoice has a Voucher Type of "Sales" or "Purchase", output the following:
@@ -57,7 +57,7 @@ Important Rules:
     - Correctly identify Debt and Credit amounts based on the invoice data.
     - Ensure sum of Debit Amount equals sum of Credit Amount. If not, adjust the amounts accordingly. This is very important.
     - Assign Account Groups correctly and use concise, relevant Account Names based on the invoice.
-    - Account Group must be one of the following: "Current Assets", "Current Liabilities", "Fixed Assets", "Indirect Expenses", "Investments", "Loans (Liability)", "Bank Accounts", "Cash-in-Hand", "Duties & Taxes", "Provisions", "Reserves & Surplus", "Secured Loans", "Stock-in-Hand", "Sundry Creditors - Expenses", "Sundry Creditors - Purchases", "Sundry Debtors", "Unsecured Loans".
+    - Account Group must be one of the following: "Current Assets", "Current Liabilities", "Fixed Assets", "Indirect Expenses", "Investments", "Loans (Liability)", "Bank Accounts", "Cash-in-Hand", "Duties & Taxes", "Provisions", "Reserves & Surplus", "Secured Loans", "Stock-in-Hand", "Sundry Creditors", "Sundry Debtors", "Unsecured Loans".
     - For any Account Names not directly mentioned in the invoice, generate names based on using concise and relevant information.
 
 The invoice text is as follows:

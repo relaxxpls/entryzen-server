@@ -2,8 +2,8 @@ import pandas as pd
 from datetime import datetime
 
 from src.parse_pdf import is_journal_voucher
-from .helpers import convert_to_tally_date
 from .loadclr import tally
+from .helpers import convert_to_tally_date
 
 from System.Collections.Generic import List as CSList  # type: ignore # noqa: E402
 from TallyConnector.Core.Models import (  # type: ignore # noqa: E402
@@ -21,22 +21,18 @@ from TallyConnector.Core.Models.Masters.Inventory import StockItem, Unit, HSNDet
 
 
 # ? Start of the financial year
-applicable_from = convert_to_tally_date(f"01/04/{datetime.now().year}")
+# applicable_from = convert_to_tally_date(f"01/04/{datetime.now().year}")
+applicable_from = convert_to_tally_date(datetime.now())
 
 DEFAULT_LEDGER = {
-    "Purchase": {
-        "Name": "TallAi - Purchase Account",
-        "Group": "Purchase Accounts",
-    },
-    "Sales": {
-        "Name": "TallAi - Sales Account",
-        "Group": "Sales Accounts",
-    },
-    "Tax": {
-        "Name": "IGST",
-        "Group": "Duties & Taxes",
-    },
+    "Purchase": {"Name": "TallAi - Purchase Account", "Group": "Purchase Accounts"},
+    "Sales": {"Name": "TallAi - Sales Account", "Group": "Sales Accounts"},
 }
+
+TAX_LEDGERS = [
+    {"Name": "CGST", "Group": "Duties & Taxes", "GSTTaxType": "CGST"},
+    {"Name": "SGST", "Group": "Duties & Taxes", "GSTTaxType": "SGST/UTGST"},
+]
 
 
 TALLY_NA = "\u0004 Not Applicable"
@@ -56,7 +52,7 @@ def create_party_account(common_df: pd.DataFrame, ledger_names: list[str]):
     ledger = Ledger()
     ledger.OldName = party_account
     ledger.Name = party_account
-    ledger.Group = "Sundry Debtors" if is_sales else "Sundry Creditors - Purchases"
+    ledger.Group = "Sundry Debtors" if is_sales else "Sundry Creditors"
 
     # Create a LedgerGSTRegistrationDetails object
     gstin = common_df[f"{perspective} GSTIN"].iloc[0]
@@ -124,6 +120,7 @@ def create_stock_items(items_df: pd.DataFrame):
         stock_item.OldName = stock_item_name
         stock_item.Name = stock_item_name
         stock_item.BaseUnit = items_df["[D] Units"].iloc[idx]
+        stock_item.GSTApplicable = "\u0004 Applicable"
 
         hsn_code = items_df["HSN Code"].iloc[idx]
         if not pd.isna(hsn_code):
@@ -139,15 +136,27 @@ def create_stock_items(items_df: pd.DataFrame):
         if pd.api.types.is_numeric_dtype(tax_rate):
             tax_rate = tax_rate.item()
 
-            gst_rate_details = GSTRateDetail()
-            gst_rate_details.DutyHead = "IGST"
-            gst_rate_details.ValuationType = "Based on Value"
-            gst_rate_details.GSTRate = tax_rate
+            igst_rate_details = GSTRateDetail()
+            igst_rate_details.DutyHead = "IGST"
+            igst_rate_details.ValuationType = "Based on Value"
+            igst_rate_details.GSTRate = tax_rate
+
+            cgst_rate_details = GSTRateDetail()
+            cgst_rate_details.DutyHead = "CGST"
+            cgst_rate_details.ValuationType = "Based on Value"
+            cgst_rate_details.GSTRate = tax_rate // 2
+
+            sgst_rate_details = GSTRateDetail()
+            sgst_rate_details.DutyHead = "SGST/UTGST"
+            sgst_rate_details.ValuationType = "Based on Value"
+            sgst_rate_details.GSTRate = tax_rate // 2
 
             state_wise_details = StateWiseDetail()
             state_wise_details.StateName = "\u0004 Any"
             state_wise_details.GSTRateDetails = CSList[GSTRateDetail]()
-            state_wise_details.GSTRateDetails.Add(gst_rate_details)
+            state_wise_details.GSTRateDetails.Add(igst_rate_details)
+            state_wise_details.GSTRateDetails.Add(cgst_rate_details)
+            state_wise_details.GSTRateDetails.Add(sgst_rate_details)
 
             gst_details = GSTDetail()
             gst_details.ApplicableFrom = applicable_from
@@ -188,17 +197,18 @@ def create_masters_sales_purchase(common_df: pd.DataFrame, items_df: pd.DataFram
         print(f"Created {voucher_type} Ledger with {ledger.Name}")
 
     # ? Create IGST ledger
-    if "IGST" not in ledger_names:
-        ledger = Ledger()
-        ledger.Name = DEFAULT_LEDGER["Tax"]["Name"]
-        ledger.Group = DEFAULT_LEDGER["Tax"]["Group"]
-        ledger.TaxType = TaxType.GST
-        ledger.GSTTaxType = "IGST"
-        tally.PostLedgerAsync[Ledger](ledger).Result
+    for tax_ledger in TAX_LEDGERS:
+        if tax_ledger["Name"] not in ledger_names:
+            ledger = Ledger()
+            ledger.Name = tax_ledger["Name"]
+            ledger.Group = tax_ledger["Group"]
+            ledger.TaxType = TaxType.GST
+            ledger.GSTTaxType = tax_ledger["GSTTaxType"]
+            tally.PostLedgerAsync[Ledger](ledger).Result
 
-        # ? Update ledger names
-        ledger_names.append(ledger.Name)
-        print("Created IGST Ledger")
+            # ? Update ledger names
+            ledger_names.append(ledger.Name)
+            print(f"Created {ledger.Name} Ledger")
 
     # ? Create units
     create_units(items_df)
